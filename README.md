@@ -1,5 +1,9 @@
 # 正修科技大學 3D 模擬校園導覽與安全系統 (Cheng Shiu University 3D Virtual Campus)
 
+[![GitHub Pages](https://img.shields.io/badge/Live%20Demo-GitHub%20Pages-brightgreen?style=for-the-badge&logo=github)](https://tsai-py.github.io/csu-campus-tour/)
+
+🔗 **線上正式體驗網址**：[https://tsai-py.github.io/csu-campus-tour/](https://tsai-py.github.io/csu-campus-tour/)
+
 嚴格依據最新官方**「正修科技大學校園安全地圖」**重新校準與重構之 **3D 擬真校園模型、第一人稱貼地漫步與智慧導覽系統**。
 
 ---
