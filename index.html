@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>正修科技大學 3D 模擬校園導覽系統 | Cheng Shiu University Virtual Campus</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏫</text></svg>">
+</head>
+<body>
+
+  <!-- 3D WebGL 畫布容器 -->
+  <div id="webgl-container"></div>
+
+  <!-- 頂部功能導航欄 -->
+  <header class="top-navbar">
+    <div class="brand">
+      <div class="brand-badge">正</div>
+      <div class="brand-text">
+        <h1>正修科技大學 3D 校園模擬與導覽系統</h1>
+        <p>CHENG SHIU UNIVERSITY · VIRTUAL CAMPUS 3D TOUR</p>
+      </div>
+    </div>
+
+    <!-- 視角切換快捷鍵 -->
+    <div class="navbar-center">
+      <button class="view-preset-btn active" data-view="overview">🌐 鳥瞰全景</button>
+      <button class="view-preset-btn" data-view="gate">🚪 學校正門</button>
+      <button class="view-preset-btn" data-view="library">📚 圖書科技大樓</button>
+      <button class="view-preset-btn" data-view="sports">🏀 籃網球場</button>
+      <button class="view-preset-btn" data-view="safety">🛡️ 校安中心</button>
+      <button class="view-preset-btn" data-view="dorm">🛌 正修宿舍/天橋</button>
+      <button id="open-walk-mode-btn" class="view-preset-btn" style="background:rgba(16, 185, 129, 0.4); border-color:#10b981; color:#fff; font-weight:700;">🚶 貼地行走模式</button>
+    </div>
+
+    <!-- 環境光影切換與對照地圖按鈕 -->
+    <div class="navbar-right">
+      <div style="display:flex; gap:4px;">
+        <button class="time-mode-btn active" data-mode="day" title="晴空白天">☀️ 日景</button>
+        <button class="time-mode-btn" data-mode="sunset" title="金色夕陽">🌅 夕陽</button>
+        <button class="time-mode-btn" data-mode="night" title="璀璨夜景 (加強照明走廊發光)">🌙 夜景</button>
+      </div>
+      <button id="open-original-map-btn" class="btn-primary">
+        🗺️ 校園安全地圖對照
+      </button>
+    </div>
+  </header>
+
+  <!-- 左側建築物目錄與即時搜尋側邊欄 -->
+  <aside id="left-sidebar" class="left-sidebar">
+    <button id="sidebar-toggle" class="sidebar-toggle-btn" title="收折/展開側邊欄">◀</button>
+    <div class="sidebar-header">
+      <div class="search-input-wrapper">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="search-input" placeholder="搜尋建築、系所、7-11、餐廳、宿舍..." autocomplete="off">
+      </div>
+      <div id="category-tags" class="category-tags"></div>
+    </div>
+    <div id="building-list" class="building-list"></div>
+  </aside>
+
+  <!-- 右側面板：導覽巡航與兩點路徑規劃 -->
+  <aside class="right-panel">
+    <div class="panel-tabs">
+      <div class="panel-tab active" data-tab="tour">🎓 校園導覽巡航</div>
+      <div class="panel-tab" data-tab="nav">🧭 兩點路線導航</div>
+    </div>
+
+    <!-- 分頁 1: 主題導覽巡航 -->
+    <div id="tab-tour" class="tab-content active">
+      <button id="start-walk-tour-btn" class="btn-primary" style="width:100%; margin-bottom:10px; justify-content:center; background:linear-gradient(135deg, #10b981, #059669); box-shadow:0 4px 15px rgba(16,185,129,0.4);">
+        🚶 進入校園第一人稱貼地漫步模式
+      </button>
+      <button id="start-full-tour-btn" class="btn-primary" style="width:100%; margin-bottom:14px; justify-content:center;">
+        🌟 啟動全校景點智慧全景巡航
+      </button>
+      <div id="routes-list"></div>
+    </div>
+
+    <!-- 分頁 2: 兩點路徑規劃 (A* / Dijkstra) -->
+    <div id="tab-nav" class="tab-content">
+      <div class="nav-form">
+        <div class="form-group">
+          <label>📍 起點景點 (Start)</label>
+          <select id="nav-start-select" class="form-select"></select>
+        </div>
+        <div style="text-align:center;">
+          <button id="nav-swap-btn" class="modal-btn" style="width:auto; padding:4px 14px; margin:0 auto;" title="起訖對調">
+            ⇅ 對調起訖點
+          </button>
+        </div>
+        <div class="form-group">
+          <label>🏁 終點景點 (Destination)</label>
+          <select id="nav-end-select" class="form-select"></select>
+        </div>
+        <button id="nav-calculate-btn" class="btn-primary" style="width:100%; justify-content:center;">
+          🚀 開始路徑規劃與 3D 引導
+        </button>
+        <button id="nav-clear-btn" class="modal-btn" style="width:100%;">
+          ✖ 清除導航引導線
+        </button>
+      </div>
+
+      <!-- 導航計算結果 -->
+      <div id="nav-result-box" class="nav-result-box">
+        <div class="nav-stats">
+          <div class="nav-stat-item">
+            <div id="nav-distance-val" class="stat-value">0 公尺</div>
+            <div class="stat-label">預估步行距離</div>
+          </div>
+          <div class="nav-stat-item">
+            <div id="nav-time-val" class="stat-value">0 分鐘</div>
+            <div class="stat-label">預估步行時間</div>
+          </div>
+        </div>
+        <p style="font-size:11px; color:#cbd5e1; line-height:1.4;">
+          ✨ 已在地表投影出動態發光引導光帶，跟隨光帶即可抵達目的地！
+        </p>
+      </div>
+    </div>
+  </aside>
+
+  <!-- 校園第一人稱貼地行走 HUD (行走模式中顯現) -->
+  <div id="walk-hud" class="walk-hud">
+    <div class="walk-hud-header">
+      <div class="walk-hud-title">
+        <span class="walk-icon">🚶</span>
+        <div>
+          <h3>校園第一人稱貼地行走模式</h3>
+          <p id="walk-hud-status">視線高度：1.8 公尺 · 地表即時漫步中</p>
+        </div>
+      </div>
+      <button id="exit-walk-btn" class="tour-ctrl-btn exit">✕ 退出行走模式 (返回鳥瞰)</button>
+    </div>
+
+    <!-- 快捷出發點與功能按鈕 -->
+    <div class="walk-toolbar">
+      <div class="walk-spot-selector">
+        <span style="font-size:12px; color:#94a3b8; font-weight:600;">出發點：</span>
+        <button class="walk-spot-btn active" data-coords="-50,135">門口正門</button>
+        <button class="walk-spot-btn" data-coords="-50,115">綜合大樓</button>
+        <button class="walk-spot-btn" data-coords="80,-35">人文大樓7-11</button>
+        <button class="walk-spot-btn" data-coords="135,-35">圖書科技大樓</button>
+        <button class="walk-spot-btn" data-coords="40,-10">籃網球場</button>
+        <button class="walk-spot-btn" data-coords="135,-155">宿舍天橋</button>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button id="toggle-autowalk-btn" class="tour-ctrl-btn" style="background:#0284c7;">🐾 自動貼地導覽散步</button>
+        <button id="toggle-run-btn" class="tour-ctrl-btn">🏃 跑步模式</button>
+      </div>
+    </div>
+
+    <!-- 底部操作提示與虛擬方向按鈕 (支援觸控/滑鼠點擊) -->
+    <div class="walk-controls-wrapper">
+      <div class="walk-tips">
+        <p>⌨️ 鍵盤控制：<strong>W / ↑</strong> 前進，<strong>S / ↓</strong> 後退，<strong>A / D</strong> 平移，<strong>← / →</strong> 轉向，<strong>Shift</strong> 跑步</p>
+        <p>🖱️ 滑鼠操作：在畫面上<strong>按住滑鼠左鍵拖曳</strong>可自由環視四周風景</p>
+      </div>
+
+      <!-- 螢幕虛擬方向手把 (Virtual D-Pad) -->
+      <div class="virtual-dpad">
+        <div class="dpad-row">
+          <button class="dpad-btn" id="dpad-up" title="前進 (W)">▲</button>
+        </div>
+        <div class="dpad-row">
+          <button class="dpad-btn" id="dpad-left" title="向左轉 (A)">◀</button>
+          <button class="dpad-btn" id="dpad-down" title="後退 (S)">▼</button>
+          <button class="dpad-btn" id="dpad-right" title="向右轉 (D)">▶</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 底部語音導覽巡航控制 HUD (導覽進行時顯現) -->
+  <div id="tour-hud" class="tour-hud">
+    <div class="tour-hud-header">
+      <div id="tour-hud-title" class="tour-hud-title">校園導覽進行中</div>
+      <div id="tour-hud-progress" class="tour-hud-progress">第 1 / 7 站</div>
+    </div>
+    <div id="tour-subtitles" class="tour-subtitles">
+      歡迎蒞臨正修科技大學！正在為您準備精彩的校園導覽...
+    </div>
+    <div class="tour-controls">
+      <div style="display:flex; gap:8px;">
+        <button id="tour-prev-btn" class="tour-ctrl-btn">⏮ 上一站</button>
+        <button id="tour-play-pause-btn" class="tour-ctrl-btn">⏸ 暫停</button>
+        <button id="tour-next-btn" class="tour-ctrl-btn">⏭ 下一站</button>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button id="tour-mute-btn" class="tour-ctrl-btn">🔊 語音</button>
+        <button id="tour-exit-btn" class="tour-ctrl-btn exit">✕ 結束導覽</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 建築物詳細彈出卡片 -->
+  <div id="building-detail-modal" class="building-detail-modal">
+    <div class="modal-header">
+      <div class="modal-title-group">
+        <div id="modal-badge" class="modal-badge">01</div>
+        <div class="modal-title-text">
+          <h2 id="modal-title">建築物名稱</h2>
+          <p id="modal-entitle">Building Name</p>
+        </div>
+      </div>
+      <button id="modal-close-btn" class="close-btn" title="關閉">✕</button>
+    </div>
+
+    <div id="modal-summary" class="modal-summary">建築特色概要簡介...</div>
+
+    <div class="modal-section">
+      <div class="section-label">🏛️ 進駐系所與行政單位</div>
+      <div id="modal-depts" class="pill-container"></div>
+    </div>
+
+    <div class="modal-section">
+      <div class="section-label">⚡ 生活與研究設施</div>
+      <div id="modal-facilities" class="pill-container"></div>
+    </div>
+
+    <div class="modal-actions">
+      <button id="modal-audio-btn" class="modal-btn" title="播放中文語音解說">
+        🔊 語音解說
+      </button>
+      <button id="modal-focus-btn" class="modal-btn" title="拉近相機特寫">
+        🔍 聚焦特寫
+      </button>
+    </div>
+    <div class="modal-actions" style="margin-top:8px;">
+      <button id="modal-set-start" class="modal-btn" style="background:rgba(2, 132, 199, 0.4);">
+        📍 設為導航起點
+      </button>
+      <button id="modal-set-end" class="modal-btn" style="background:rgba(16, 185, 129, 0.4);">
+        🏁 設為導航終點
+      </button>
+    </div>
+  </div>
+
+  <!-- 右下角原圖地圖縮圖雷達 -->
+  <div id="minimap-box" class="minimap-container" title="點擊放大查看官方校園安全地圖">
+    <img src="assets/campus_plan.jpg" alt="正修科大校園安全地圖" class="minimap-img">
+    <div class="minimap-badge">🗺️ 點擊檢視安全地圖</div>
+  </div>
+
+  <!-- 官方校園安全地圖大圖對照燈箱 (Lightbox) -->
+  <div id="map-lightbox" class="map-lightbox">
+    <div class="lightbox-content">
+      <button id="lightbox-close-btn" class="lightbox-close-btn" title="關閉地圖">✕</button>
+      <img src="assets/campus_plan.jpg" alt="正修科技大學校園安全地圖全貌" class="lightbox-img">
+    </div>
+  </div>
+
+  <!-- 核心函式庫 (本地免聯網離線加載) -->
+  <script src="libs/three.min.js"></script>
+  <script src="libs/OrbitControls.js"></script>
+  <script src="libs/tween.umd.js"></script>
+
+  <!-- 應用程式邏輯 -->
+  <script src="js/data.js"></script>
+  <script src="js/pathfinder.js"></script>
+  <script src="js/scene.js"></script>
+  <script src="js/tour.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>
