@@ -944,17 +944,17 @@ class CampusScene {
     return group;
   }
 
-  // 07 土木工程館 (真實立面照片映射、超人力霸王巨型立像、碩士班招生看板與熱帶棕櫚樹)
+  // 07 土木工程館 (土木系館) - 實景正面照片無閃爍無遮擋精準貼圖
   createCivilEngineeringMesh(b) {
     const group = new THREE.Group();
     const w = b.size[0]; // 22m
     const h = b.size[1]; // 16m
     const d = b.size[2]; // 18m
 
-    // 1. 主建物紅褐色面磚結構 (完全比照真實照片紅磚色調)
+    // 1. 主建物紅褐色面磚結構 (比照真實照片紅面磚色調 #9a3412)
     const brickMat = new THREE.MeshStandardMaterial({
       color: 0x9a3412,
-      roughness: 0.65,
+      roughness: 0.7,
       metalness: 0.05
     });
     const body = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), brickMat);
@@ -963,160 +963,104 @@ class CampusScene {
     body.receiveShadow = true;
     group.add(body);
 
-    // 屋頂女兒牆與邊緣壓條
+    // 屋頂女兒牆與頂部深色邊框
     const roofMat = new THREE.MeshStandardMaterial({ color: 0x571c08, roughness: 0.6 });
     const roof = new THREE.Mesh(new THREE.BoxGeometry(w + 0.6, 0.9, d + 0.6), roofMat);
     roof.position.y = h + 0.45;
     group.add(roof);
 
-    // 2. 正面 (+Z) 真實照片材質貼圖面板
+    // 2. 正面 (+Z) 真實照片面板 (徹底杜絕 Z-fighting 閃爍)
+    // 照片解析度 1024x1008 (比例約 1.016:1)
+    const panelW = 16.0;
+    const panelH = 15.2;
+
+    // 後方深色實體邊框基座 (厚度 0.3m，前表面位於 d/2 + 0.25m)
+    const frameGeo = new THREE.BoxGeometry(panelW + 0.6, panelH + 0.4, 0.3);
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0x3d1a0e, roughness: 0.5 });
+    const frameMesh = new THREE.Mesh(frameGeo, frameMat);
+    frameMesh.position.set(0, panelH / 2 + 0.4, d / 2 + 0.1);
+    group.add(frameMesh);
+
+    // 照片貼圖材質
     const textureLoader = new THREE.TextureLoader();
     const facadeTexture = textureLoader.load("assets/civil_eng_facade.jpg");
     facadeTexture.generateMipmaps = true;
+    facadeTexture.minFilter = THREE.LinearMipmapLinearFilter;
+    facadeTexture.magFilter = THREE.LinearFilter;
 
-    // 面板尺寸：寬 16.5m, 高 15.2m (配合照片近似 1:1 的真實比例)
-    const facadeGeo = new THREE.PlaneGeometry(16.5, 15.2);
+    // 照片平面：厚度獨立置於 d/2 + 0.28m (前方 3cm 處)，並開啟 polygonOffset 雙重防護，徹底根除任何閃爍
+    const facadeGeo = new THREE.PlaneGeometry(panelW, panelH);
     const facadeMat = new THREE.MeshStandardMaterial({
       map: facadeTexture,
-      roughness: 0.35,
-      metalness: 0.05,
-      side: THREE.FrontSide
+      roughness: 0.5,
+      metalness: 0.0,
+      side: THREE.FrontSide,
+      polygonOffset: true,
+      polygonOffsetFactor: -2,
+      polygonOffsetUnits: -2
     });
     const facadeMesh = new THREE.Mesh(facadeGeo, facadeMat);
-    facadeMesh.position.set(-0.5, 15.2 / 2 + 0.4, d / 2 + 0.08);
+    facadeMesh.position.set(0, panelH / 2 + 0.4, d / 2 + 0.28);
     facadeMesh.castShadow = true;
     group.add(facadeMesh);
 
-    // 面板深色實體邊框基座
-    const frameGeo = new THREE.BoxGeometry(16.9, 15.6, 0.12);
-    const frameMat = new THREE.MeshStandardMaterial({ color: 0x431407, roughness: 0.5 });
-    const frameMesh = new THREE.Mesh(frameGeo, frameMat);
-    frameMesh.position.set(-0.5, 15.2 / 2 + 0.4, d / 2 + 0.02);
-    group.add(frameMesh);
+    // 3. 正門前寬敞低矮迎賓階梯 (完全不遮擋上方照片中的大門與超人)
+    const stepMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.8 });
+    const step1 = new THREE.Mesh(new THREE.BoxGeometry(panelW + 2, 0.2, 3.2), stepMat);
+    step1.position.set(0, 0.1, d / 2 + 1.6);
+    step1.receiveShadow = true;
+    group.add(step1);
 
-    // 3. 一樓大門立體雨遮門廊 (Granite Canopy Porch)
-    const canopy = new THREE.Mesh(
-      new THREE.BoxGeometry(7.2, 0.35, 2.6),
-      new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.3 })
-    );
-    canopy.position.set(2.4, 3.6, d / 2 + 1.3);
-    canopy.castShadow = true;
-    group.add(canopy);
+    const step2 = new THREE.Mesh(new THREE.BoxGeometry(panelW, 0.2, 2.2), stepMat);
+    step2.position.set(0, 0.3, d / 2 + 1.1);
+    step2.receiveShadow = true;
+    group.add(step2);
 
-    // 大門門柱
-    [-0.8, 5.6].forEach(px => {
-      const col = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.18, 0.18, 3.6, 8),
-        new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.5 })
-      );
-      col.position.set(px, 1.8, d / 2 + 2.5);
-      group.add(col);
-    });
-
-    // 4. 正門前立體巨型「超人力霸王 (Ultraman)」立像 (高度約 7.2 公尺，斯派修姆光線姿態)
-    const ultramanGroup = new THREE.Group();
-    ultramanGroup.position.set(-5.6, 0, d / 2 + 2.2);
-
-    const silverMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.25, metalness: 0.75 });
-    const redMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.35, metalness: 0.2 });
-    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xfef08a }); // 明亮金黃發光雙眼
-    const timerMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 }); // 胸口彩色計時器 (水藍光)
-
-    // 雙腿
-    [-0.55, 0.55].forEach(lx => {
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.4, 3.2, 12), silverMat);
-      leg.position.set(lx, 1.6, 0);
-      leg.castShadow = true;
-      ultramanGroup.add(leg);
-
-      const bootStripe = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.38, 1.2, 12), redMat);
-      bootStripe.position.set(lx, 1.4, 0);
-      ultramanGroup.add(bootStripe);
-    });
-
-    // 軀幹 (紅銀相間流線造型)
-    const torso = new THREE.Mesh(new THREE.BoxGeometry(1.6, 2.2, 0.9), silverMat);
-    torso.position.set(0, 4.2, 0);
-    torso.castShadow = true;
-    ultramanGroup.add(torso);
-
-    const chestRed = new THREE.Mesh(new THREE.BoxGeometry(1.64, 1.4, 0.94), redMat);
-    chestRed.position.set(0, 4.4, 0);
-    ultramanGroup.add(chestRed);
-
-    // 胸口藍色能量計時器
-    const timer = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 12), timerMat);
-    timer.scale.set(1, 1, 0.6);
-    timer.position.set(0, 4.6, 0.48);
-    ultramanGroup.add(timer);
-
-    // 頭部與特徵銀色頭鰭
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 16), silverMat);
-    head.scale.set(1, 1.25, 1.1);
-    head.position.set(0, 5.8, 0.05);
-    head.castShadow = true;
-    ultramanGroup.add(head);
-
-    const crest = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.6, 0.8), silverMat);
-    crest.position.set(0, 6.4, 0.05);
-    ultramanGroup.add(crest);
-
-    // 發光雙眼 (鹹蛋鵝黃色發光眼)
-    [-0.22, 0.22].forEach(ex => {
-      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), eyeMat);
-      eye.scale.set(1.4, 0.8, 0.6);
-      eye.position.set(ex, 5.85, 0.52);
-      ultramanGroup.add(eye);
-    });
-
-    // 經典「斯派修姆光線 (Specium Ray)」十字交疊手勢
-    const armL = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.28, 0.3), silverMat);
-    armL.position.set(0, 4.7, 0.7);
-    ultramanGroup.add(armL);
-
-    const armR = new THREE.Mesh(new THREE.BoxGeometry(0.28, 1.5, 0.3), silverMat);
-    armR.position.set(0.25, 5.1, 0.82);
-    ultramanGroup.add(armR);
-
-    // 腳邊三角安全錐 (照片中超人腳下放置之警示錐)
-    [[-1.1, -0.6], [1.1, -0.6], [-0.9, 0.8], [0.9, 0.8]].forEach(([cx, cz]) => {
-      const cone = new THREE.Mesh(
-        new THREE.ConeGeometry(0.18, 0.65, 8),
-        new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.4 })
-      );
-      cone.position.set(cx, 0.32, cz);
-      ultramanGroup.add(cone);
-    });
-
-    group.add(ultramanGroup);
-
-    // 5. 超人左側高聳熱帶棕櫚樹群 (完全再現照片背景的椰林風貌)
-    [[-9.2, d / 2 + 2.4, 18], [-8.0, d / 2 + 3.8, 16]].forEach(([tx, tz, th]) => {
-      const palmTrunk = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.22, 0.32, th, 8),
-        new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.9 })
-      );
-      palmTrunk.position.set(tx, th / 2, tz);
-      palmTrunk.castShadow = true;
-      group.add(palmTrunk);
-
-      // 樹冠葉片
-      for (let a = 0; a < Math.PI * 2; a += Math.PI / 4) {
-        const frond = new THREE.Mesh(
-          new THREE.ConeGeometry(1.6, 3.8, 5),
-          new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.6 })
-        );
-        frond.rotation.z = Math.PI / 2.6;
-        frond.rotation.y = a;
-        frond.position.set(tx, th, tz);
-        group.add(frond);
-      }
-    });
-
-    // 6. 其他三個立面 (東側、北側、西側) 保持標準教學樓立面
-    this.addWindowGrids(group, w, h, d, 0xf97316);
+    // 4. 背面與兩側窗格 (僅在 -Z 後方、+X 東側、-X 西側生成，絕不在正面 +Z 生成，根除深度衝突)
+    this.addNonFrontWindowGrids(group, w, h, d, 0xf97316);
 
     return group;
+  }
+
+  // 專門用於正面有獨立照片貼圖的建築物：只在背面與兩側生成窗格，不干擾正面
+  addNonFrontWindowGrids(group, w, h, d, accentColor) {
+    const winCanvas = document.createElement("canvas");
+    winCanvas.width = 128;
+    winCanvas.height = 128;
+    const ctx = winCanvas.getContext("2d");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, 128, 128);
+
+    ctx.fillStyle = "#334155";
+    for (let r = 10; r < 120; r += 24) {
+      for (let c = 8; c < 120; c += 18) {
+        ctx.fillRect(c, r, 12, 16);
+      }
+    }
+
+    const winTexture = new THREE.CanvasTexture(winCanvas);
+    winTexture.wrapS = THREE.RepeatWrapping;
+    winTexture.wrapT = THREE.RepeatWrapping;
+
+    const winMat = new THREE.MeshStandardMaterial({ map: winTexture, roughness: 0.3, metalness: 0.2 });
+
+    // 北側背面窗格 (-Z)
+    const facadeBack = new THREE.Mesh(new THREE.PlaneGeometry(w * 0.9, h * 0.85), winMat);
+    facadeBack.rotation.y = Math.PI;
+    facadeBack.position.set(0, h * 0.45, -d / 2 - 0.05);
+    group.add(facadeBack);
+
+    // 東側側面窗格 (+X)
+    const facadeEast = new THREE.Mesh(new THREE.PlaneGeometry(d * 0.85, h * 0.85), winMat);
+    facadeEast.rotation.y = Math.PI / 2;
+    facadeEast.position.set(w / 2 + 0.05, h * 0.45, 0);
+    group.add(facadeEast);
+
+    // 西側側面窗格 (-X)
+    const facadeWest = new THREE.Mesh(new THREE.PlaneGeometry(d * 0.85, h * 0.85), winMat);
+    facadeWest.rotation.y = -Math.PI / 2;
+    facadeWest.position.set(-w / 2 - 0.05, h * 0.45, 0);
+    group.add(facadeWest);
   }
 
   // 通用教學館舍
