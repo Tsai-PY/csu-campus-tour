@@ -163,6 +163,28 @@ document.addEventListener("DOMContentLoaded", () => {
     modalEnTitle.textContent = `${building.enName} · ${building.categoryName}`;
     modalSummary.textContent = building.summary;
 
+    // 實景照片展示區塊
+    let photoBox = document.getElementById("modal-photo-preview");
+    if (!photoBox) {
+      photoBox = document.createElement("div");
+      photoBox.id = "modal-photo-preview";
+      photoBox.style.cssText = "margin: 12px 0; border-radius: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 4px 12px rgba(0,0,0,0.4); cursor: pointer;";
+      modalSummary.parentNode.insertBefore(photoBox, modalSummary);
+    }
+    if (building.photo) {
+      photoBox.style.display = "block";
+      photoBox.innerHTML = `
+        <img src="${building.photo}" alt="${building.name}" style="width:100%; height:180px; object-fit:cover; display:block;" title="點擊在新視窗檢視高清大圖">
+        <div style="background:rgba(15,23,42,0.88); padding:6px 10px; font-size:11px; color:#38bdf8; display:flex; justify-content:space-between; align-items:center;">
+          <span>📷 實景正面照片（正修土木工學館 · 超人力霸王立像）</span>
+          <span style="color:#94a3b8; font-size:10px;">點擊放大 ↗</span>
+        </div>
+      `;
+      photoBox.onclick = () => window.open(building.photo, "_blank");
+    } else {
+      photoBox.style.display = "none";
+    }
+
     // 系所與行政單位標籤
     modalDepts.innerHTML = "";
     if (building.departments && building.departments.length > 0) {

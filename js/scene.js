@@ -458,6 +458,9 @@ class CampusScene {
         case "high_tech":
           visualGroup = this.createHighTechLabMesh(b); // 23 超微量實驗室
           break;
+        case "civil_eng":
+          visualGroup = this.createCivilEngineeringMesh(b); // 07 土木工程館 (真實立面照片與超人力霸王)
+          break;
         case "court":
           visualGroup = new THREE.Group(); // 已在 buildSportsCourtsAndTrack 建構
           break;
@@ -941,6 +944,181 @@ class CampusScene {
     return group;
   }
 
+  // 07 土木工程館 (真實立面照片映射、超人力霸王巨型立像、碩士班招生看板與熱帶棕櫚樹)
+  createCivilEngineeringMesh(b) {
+    const group = new THREE.Group();
+    const w = b.size[0]; // 22m
+    const h = b.size[1]; // 16m
+    const d = b.size[2]; // 18m
+
+    // 1. 主建物紅褐色面磚結構 (完全比照真實照片紅磚色調)
+    const brickMat = new THREE.MeshStandardMaterial({
+      color: 0x9a3412,
+      roughness: 0.65,
+      metalness: 0.05
+    });
+    const body = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), brickMat);
+    body.position.y = h / 2;
+    body.castShadow = true;
+    body.receiveShadow = true;
+    group.add(body);
+
+    // 屋頂女兒牆與邊緣壓條
+    const roofMat = new THREE.MeshStandardMaterial({ color: 0x571c08, roughness: 0.6 });
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(w + 0.6, 0.9, d + 0.6), roofMat);
+    roof.position.y = h + 0.45;
+    group.add(roof);
+
+    // 2. 正面 (+Z) 真實照片材質貼圖面板
+    const textureLoader = new THREE.TextureLoader();
+    const facadeTexture = textureLoader.load("assets/civil_eng_facade.jpg");
+    facadeTexture.generateMipmaps = true;
+
+    // 面板尺寸：寬 16.5m, 高 15.2m (配合照片近似 1:1 的真實比例)
+    const facadeGeo = new THREE.PlaneGeometry(16.5, 15.2);
+    const facadeMat = new THREE.MeshStandardMaterial({
+      map: facadeTexture,
+      roughness: 0.35,
+      metalness: 0.05,
+      side: THREE.FrontSide
+    });
+    const facadeMesh = new THREE.Mesh(facadeGeo, facadeMat);
+    facadeMesh.position.set(-0.5, 15.2 / 2 + 0.4, d / 2 + 0.08);
+    facadeMesh.castShadow = true;
+    group.add(facadeMesh);
+
+    // 面板深色實體邊框基座
+    const frameGeo = new THREE.BoxGeometry(16.9, 15.6, 0.12);
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0x431407, roughness: 0.5 });
+    const frameMesh = new THREE.Mesh(frameGeo, frameMat);
+    frameMesh.position.set(-0.5, 15.2 / 2 + 0.4, d / 2 + 0.02);
+    group.add(frameMesh);
+
+    // 3. 一樓大門立體雨遮門廊 (Granite Canopy Porch)
+    const canopy = new THREE.Mesh(
+      new THREE.BoxGeometry(7.2, 0.35, 2.6),
+      new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.3 })
+    );
+    canopy.position.set(2.4, 3.6, d / 2 + 1.3);
+    canopy.castShadow = true;
+    group.add(canopy);
+
+    // 大門門柱
+    [-0.8, 5.6].forEach(px => {
+      const col = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.18, 0.18, 3.6, 8),
+        new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.5 })
+      );
+      col.position.set(px, 1.8, d / 2 + 2.5);
+      group.add(col);
+    });
+
+    // 4. 正門前立體巨型「超人力霸王 (Ultraman)」立像 (高度約 7.2 公尺，斯派修姆光線姿態)
+    const ultramanGroup = new THREE.Group();
+    ultramanGroup.position.set(-5.6, 0, d / 2 + 2.2);
+
+    const silverMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.25, metalness: 0.75 });
+    const redMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.35, metalness: 0.2 });
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xfef08a }); // 明亮金黃發光雙眼
+    const timerMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 }); // 胸口彩色計時器 (水藍光)
+
+    // 雙腿
+    [-0.55, 0.55].forEach(lx => {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.4, 3.2, 12), silverMat);
+      leg.position.set(lx, 1.6, 0);
+      leg.castShadow = true;
+      ultramanGroup.add(leg);
+
+      const bootStripe = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.38, 1.2, 12), redMat);
+      bootStripe.position.set(lx, 1.4, 0);
+      ultramanGroup.add(bootStripe);
+    });
+
+    // 軀幹 (紅銀相間流線造型)
+    const torso = new THREE.Mesh(new THREE.BoxGeometry(1.6, 2.2, 0.9), silverMat);
+    torso.position.set(0, 4.2, 0);
+    torso.castShadow = true;
+    ultramanGroup.add(torso);
+
+    const chestRed = new THREE.Mesh(new THREE.BoxGeometry(1.64, 1.4, 0.94), redMat);
+    chestRed.position.set(0, 4.4, 0);
+    ultramanGroup.add(chestRed);
+
+    // 胸口藍色能量計時器
+    const timer = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 12), timerMat);
+    timer.scale.set(1, 1, 0.6);
+    timer.position.set(0, 4.6, 0.48);
+    ultramanGroup.add(timer);
+
+    // 頭部與特徵銀色頭鰭
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 16), silverMat);
+    head.scale.set(1, 1.25, 1.1);
+    head.position.set(0, 5.8, 0.05);
+    head.castShadow = true;
+    ultramanGroup.add(head);
+
+    const crest = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.6, 0.8), silverMat);
+    crest.position.set(0, 6.4, 0.05);
+    ultramanGroup.add(crest);
+
+    // 發光雙眼 (鹹蛋鵝黃色發光眼)
+    [-0.22, 0.22].forEach(ex => {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), eyeMat);
+      eye.scale.set(1.4, 0.8, 0.6);
+      eye.position.set(ex, 5.85, 0.52);
+      ultramanGroup.add(eye);
+    });
+
+    // 經典「斯派修姆光線 (Specium Ray)」十字交疊手勢
+    const armL = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.28, 0.3), silverMat);
+    armL.position.set(0, 4.7, 0.7);
+    ultramanGroup.add(armL);
+
+    const armR = new THREE.Mesh(new THREE.BoxGeometry(0.28, 1.5, 0.3), silverMat);
+    armR.position.set(0.25, 5.1, 0.82);
+    ultramanGroup.add(armR);
+
+    // 腳邊三角安全錐 (照片中超人腳下放置之警示錐)
+    [[-1.1, -0.6], [1.1, -0.6], [-0.9, 0.8], [0.9, 0.8]].forEach(([cx, cz]) => {
+      const cone = new THREE.Mesh(
+        new THREE.ConeGeometry(0.18, 0.65, 8),
+        new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.4 })
+      );
+      cone.position.set(cx, 0.32, cz);
+      ultramanGroup.add(cone);
+    });
+
+    group.add(ultramanGroup);
+
+    // 5. 超人左側高聳熱帶棕櫚樹群 (完全再現照片背景的椰林風貌)
+    [[-9.2, d / 2 + 2.4, 18], [-8.0, d / 2 + 3.8, 16]].forEach(([tx, tz, th]) => {
+      const palmTrunk = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.22, 0.32, th, 8),
+        new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.9 })
+      );
+      palmTrunk.position.set(tx, th / 2, tz);
+      palmTrunk.castShadow = true;
+      group.add(palmTrunk);
+
+      // 樹冠葉片
+      for (let a = 0; a < Math.PI * 2; a += Math.PI / 4) {
+        const frond = new THREE.Mesh(
+          new THREE.ConeGeometry(1.6, 3.8, 5),
+          new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.6 })
+        );
+        frond.rotation.z = Math.PI / 2.6;
+        frond.rotation.y = a;
+        frond.position.set(tx, th, tz);
+        group.add(frond);
+      }
+    });
+
+    // 6. 其他三個立面 (東側、北側、西側) 保持標準教學樓立面
+    this.addWindowGrids(group, w, h, d, 0xf97316);
+
+    return group;
+  }
+
   // 通用教學館舍
   createStandardBuildingMesh(b) {
     const group = new THREE.Group();
@@ -1304,8 +1482,14 @@ class CampusScene {
     const b = this.data.buildings.find(item => item.id === buildingId);
     if (!b) return;
 
-    const targetPos = new THREE.Vector3(b.pos[0], b.size[1] / 2, b.pos[2]);
-    const cameraOffset = new THREE.Vector3(b.pos[0] - 40, b.size[1] + 35, b.pos[2] + 55);
+    let targetPos = new THREE.Vector3(b.pos[0], b.size[1] / 2, b.pos[2]);
+    let cameraOffset = new THREE.Vector3(b.pos[0] - 40, b.size[1] + 35, b.pos[2] + 55);
+
+    // 07 土木工程館特寫：正面平視角度欣賞實景立面與超人力霸王
+    if (buildingId === "b07") {
+      targetPos = new THREE.Vector3(b.pos[0] - 1, 7.5, b.pos[2]);
+      cameraOffset = new THREE.Vector3(b.pos[0] - 1, 8.5, b.pos[2] + 32);
+    }
 
     this.animateCamera(cameraOffset, targetPos, duration);
     this.selectBuilding(buildingId, false);
@@ -1407,6 +1591,10 @@ class CampusScene {
         break;
       case "library":
         this.animateCamera(new THREE.Vector3(80, 45, 15), new THREE.Vector3(135, 20, -45));
+        break;
+      case "civil":
+        // 聚焦 07 土木系館正面特寫視角 (清晰觀賞立面照片、超人與迎賓門廊)
+        this.animateCamera(new THREE.Vector3(-146, 8.5, 42), new THREE.Vector3(-146, 7.5, 10));
         break;
       case "sports":
         this.animateCamera(new THREE.Vector3(40, 45, 45), new THREE.Vector3(40, 0, -15));
